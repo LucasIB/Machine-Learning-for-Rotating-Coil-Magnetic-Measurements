@@ -1,0 +1,1 @@
+pyrcc5 resource_ml.qrc -o resource_ml.py
