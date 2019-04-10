@@ -8,12 +8,43 @@ import numpy as np
 import pandas as pd
 import pyqtgraph as pg
 import load_data as ld
-import matplotlib.pyplot as plt
+import tabledialog as _tabledialog
 from sklearn.cluster import KMeans
 from PyQt5 import QtWidgets, QtCore
+from matplotlib.figure import Figure as _Figure
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as _FigureCanvas,
+    NavigationToolbar2QT as _Toolbar)
 from PyQt5.QtWidgets import QMessageBox as QMessageBox
+
 #Interface
 from main_screen import *
+
+class PlotDialog(QtWidgets.QDialog):
+    """Matplotlib plot dialog."""
+
+    def __init__(self, parent=None):
+        """Add figure canvas to layout."""
+        super().__init__(parent)
+
+        self.figure = _Figure()
+        self.canvas = _FigureCanvas(self.figure)
+        self.ax = self.figure.add_subplot(111)
+
+        _layout = QtWidgets.QVBoxLayout()
+        _layout.addWidget(self.canvas)
+        self.toolbar = _Toolbar(self.canvas, self)
+        _layout.addWidget(self.toolbar)
+        self.setLayout(_layout)
+
+    def updatePlot(self):
+        """Update plot."""
+        self.canvas.draw()
+
+    def show(self):
+        """Show dialog."""
+        self.updatePlot()
+        super().show()
 
 class ApplicationWindow(QtWidgets.QWidget):
     """Machine Learning for Magnetic Measurement user interface"""
@@ -22,24 +53,30 @@ class ApplicationWindow(QtWidgets.QWidget):
         
         self.ui = Ui_Machine_Learn_Interface()
         self.ui.setupUi(self)
+        self.plot_dialog = PlotDialog()
         self.signals()
         
     def signals(self):
         """Connects UI signals and functions."""
         self.ui.pb_openfiles.clicked.connect(self.master_data) 
         self.ui.pb_kmeans.clicked.connect(self.k_means)
-        self.ui.cb_x_values.currentIndexChanged.connect(self.change_x_graphs_label)
-        self.ui.cb_y_values.currentIndexChanged.connect(self.change_y_graphs_label)
+        self.ui.cb_x_values.currentIndexChanged.connect(self.change_x_graphs_values)
+        self.ui.cb_y_values.currentIndexChanged.connect(self.change_y_graphs_values)
+        self.ui.pb_viewtable.clicked.connect(self.screen_table)
+        self.ui.pb_cluster_hint.clicked.connect(self.cluster_hint)
         
     def master_data(self):
+        """Data manipulate from database"""
         try:
-            self.data_in = ld.Main_Script()         # self.data_in is all variables that will be used (ex.:a.myapp.data_in.Data[1])
+            self.data_in = ld.Main_Script()
             _archives = self.data_in.load_files()
             if _archives:
                 self.data_in.DataFile()
-                if len(self.data_in.files) != 0:
-                    self.combo_box_x_value()
-                    self.combo_box_y_value()
+#                 if len(self.data_in.files) != 0:
+                if self.data_in is not None:
+                    if (self.ui.cb_x_values.count() == 0) and (self.ui.cb_y_values.count() == 0): 
+                        self.combo_box_x_value()
+                        self.combo_box_y_value()
                     self.get_offsets()
                     self.get_roll()
                     self.ui.pb_kmeans.setEnabled(True)
@@ -48,10 +85,10 @@ class ApplicationWindow(QtWidgets.QWidget):
                     return
                 QtWidgets.QApplication.processEvents()
             else:
-                QtWidgets.QMessageBox.critical(self,'Info','Files do not loaded.',QtWidgets.QMessageBox.Ok)
-                return
+                raise
         except:
-            traceback.print_exc(file=sys.stdout)
+            QtWidgets.QMessageBox.critical(self,'Critical','Files do not loaded.',QtWidgets.QMessageBox.Ok)
+            return
         
     def get_offsets(self):
         """ Pick up the offsets values from data"""
@@ -71,31 +108,37 @@ class ApplicationWindow(QtWidgets.QWidget):
             [s.replace("(T/m^n-2)", "").strip() for s in self.data_in.Data[0].columns_names])
         self.ui.cb_y_values.addItems(["main currents", "Y offset", "roll angle"])
     
-    def change_x_graphs_label(self):
+    def change_x_graphs_values(self):
         try:
             self.var_x = np.array([])
             idx_label = self.ui.cb_x_values.currentIndex()
             for i in range(len(self.data_in.files)):
-                if idx_label == 14:
+                if idx_label == 13:
+                    self.var_x = np.append(self.var_x, self.data_in.Data[i].main_current)
+                elif idx_label == 14:
                     self.var_x = np.append(self.var_x, self.data_in.Data[i].offset_x)
                 elif idx_label == 0:
                     pass
                 else:
-                    self.var_x = np.append(self.var_x, self.data_in.Data[i].multipoles[self.data_in.Data[i].magnet_type][idx_label])                
+                    self.var_x = np.append(self.var_x,
+                                           self.data_in.Data[i].multipoles[self.data_in.Data[i].magnet_type][idx_label])                
         except:
             traceback.print_exc(file=sys.stdout)            
         
-    def change_y_graphs_label(self):
+    def change_y_graphs_values(self):
         try:
             self.var_y = np.array([])
             idx_label = self.ui.cb_y_values.currentIndex()
             for i in range(len(self.data_in.files)):
                 if idx_label == 0:
                     pass
+                elif idx_label == 13:
+                    self.var_x = np.append(self.var_x, self.data_in.Data[i].main_current)
                 elif idx_label == 14:
                     self.var_y = np.append(self.var_y, self.data_in.Data[i].offset_y)
                 else:
-                    self.var_y = np.append(self.var_y, self.data_in.Data[i].multipoles[self.data_in.Data[i].magnet_type][idx_label])             
+                    self.var_y = np.append(self.var_y,
+                                           self.data_in.Data[i].multipoles[self.data_in.Data[i].magnet_type][idx_label])             
             
             if (len(self.var_x)) and (len(self.var_y)) > 0:
                 self.data_frame_manager(self.var_x, self.var_y)
@@ -107,36 +150,164 @@ class ApplicationWindow(QtWidgets.QWidget):
                    'y': var_y}
         self.DF = pd.DataFrame(self.DF, columns=['x', 'y'])
         print(self.DF)
-        print(self.ui.cb_x_values.currentIndex())
-        print(self.ui.cb_y_values.currentIndex())       
+#         print(self.ui.cb_x_values.currentIndex())
+#         print(self.ui.cb_y_values.currentIndex())       
     
     def k_means(self):
-        """Method for clustering data with k-means"""
-        _n_cluster = self.ui.sb_cluster_number.value()
+        try:
+            """Method for clustering data with k-means"""
+            _n_cluster = self.ui.sb_cluster_number.value()
+            
+            if len(self.DF.columns) > 2:
+                self.DF.drop(['magnet', 'class'], axis=1, inplace=True)       
+            
+            #Applying kmeans functions
+            _kmeans = KMeans(n_clusters=_n_cluster).fit(self.DF)
+                   
+            #Predicts
+            _predicts = _kmeans.labels_
+            
+            #Centroids
+            _centroids = _kmeans.cluster_centers_
+            
+            if len(self.DF.columns) == 2:
+                _names = np.array([])
+                _prev = np.array([])
+                for j in range(len(self.data_in.files)):
+                    _names = np.append(_names, self.data_in.Data[j].magnet_name)
+                    _prev = np.append(_prev, _predicts[j])
+                self.DF['magnet'] = pd.Series(_names, index=self.DF.index)
+                self.DF['class'] = pd.Series(_prev, index=self.DF.index)
+                print(self.DF.head())
+            
+            self.ui.pb_viewtable.setEnabled(True)
+            self.plot_view(self.DF, _centroids)
+        except:
+            traceback.print_exc(file=sys.stdout)
         
-        #Applying kmeans functions        
-        _kmeans = KMeans(n_clusters=_n_cluster).fit(self.DF)
-        
-        #Centroids
-        _centroids = _kmeans.cluster_centers_
-        
-        self.plot_view(self.DF, _centroids, _kmeans)
-        
-    def plot_view(self, df, center, kmeans=0.0):
+    def filter_class(self, df):#, n):
+        '''**Implementar para qualquer númaero de cluster. Dica: Tentar usar dicionários**
+                for i in range (n):    #n = number of clusters
+                _class[i]...
+            '''
+        try:
+            _class_0, _class_0_x, _class_0_y = 0,0,0
+            _class_1, _class_1_x, _class_1_y = 0,0,0
+            _class_2, _class_2_x, _class_2_y = 0,0,0
+    
+            #Filter spots class == 0
+            _class_0 = df.loc[(df['class'] == 0)]
+            _class_0_x = _class_0.x.values
+            _class_0_y = _class_0.y.values
+            
+            #Filter spots class == 1
+            _class_1 = df.loc[(df['class'] == 1)]
+            _class_1_x = _class_1.x.values
+            _class_1_y = _class_1.y.values
+            
+            #Filter spots class == 2
+            _class_2 = df.loc[(df['class'] == 2)]
+            _class_2_x = _class_2.x.values
+            _class_2_y = _class_2.y.values
+            
+            return _class_0_x, _class_0_y, _class_1_x, _class_1_y, _class_2_x, _class_2_y
+        except:
+            traceback.print_exc(file=sys.stdout)
+            
+    def plot_view(self, df, center):
+        """Plotting graphs in Graphics View QWidget"""
         try:           
             #Clear screen
             self.ui.graphicsView.clear()
-
-            _s1 = pg.ScatterPlotItem(size = 10)#, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 120))
             
-            spots_2 = [{'pos': df.values.T[:,i], 'data': 1} for i in range(len(df))]
+            #Creating the legend
+            self.ui.graphicsView.plotItem.addLegend()
+            
+            _vars = self.filter_class(df)
+            
+            _s1 = pg.ScatterPlotItem(_vars[0],
+                                     _vars[1],
+                                     size=10,
+                                     pen=pg.mkPen(None),
+                                     brush='r',
+                                     name='class 0') # Class = 0
+            
+            _s2 = pg.ScatterPlotItem(_vars[2],
+                                     _vars[3],
+                                     size=10,
+                                     pen=pg.mkPen(None),
+                                     brush='b',
+                                     name='class 1') # Class = 1
+            
+            _s3 = pg.ScatterPlotItem(_vars[4],
+                                     _vars[5],
+                                     size=10,
+                                     pen=pg.mkPen(None),
+                                     brush='k',
+                                     name='class 2') # Class = 2
+            #Adding centers points
+            _s4 = pg.ScatterPlotItem(center[:, 0],
+                                     center[:, 1],
+                                     symbol='d',
+                                     size=12,
+                                     pen=pg.mkPen(None),
+                                     brush='g') # Centers
 
-            _s1.addPoints(spots_2)
+            self.ui.graphicsView.plotItem.setLabel('left', self.ui.cb_y_values.currentText())
+            self.ui.graphicsView.plotItem.setLabel('bottom', self.ui.cb_x_values.currentText())
             self.ui.graphicsView.plotItem.showGrid(x=True, y=True, alpha=0.2)
             self.ui.graphicsView.addItem(_s1)
+            self.ui.graphicsView.addItem(_s2)
+            self.ui.graphicsView.addItem(_s3)
+            self.ui.graphicsView.addItem(_s4)
+            QtWidgets.QApplication.processEvents()
         except:
-            traceback.print_exc(file=sys.stdout)           
+            traceback.print_exc(file=sys.stdout)
+            
+    def counter(self):
+        """Count the number of elements in each cluster"""
+        pass
+    
+    def cluster_hint(self):
+        """Ideal determination of number of clusters (elbow method)"""
+        try:                
+            wcss = [] 
+            for i in range(1, 11):
+                kmeans = KMeans(n_clusters = i, init = 'random')
+                if len(self.DF.columns) > 2:
+                    _DF_for_hint = self.DF.drop(['magnet', 'class'], axis=1)
+                    kmeans.fit(_DF_for_hint)
+                else:
+                    kmeans.fit(self.DF)
+                #print (i,kmeans.inertia_)
+                wcss.append(kmeans.inertia_)  
+            fig = self.plot_dialog.figure
+            ax = self.plot_dialog.ax
+            ax.clear()
+            ax.plot(np.arange(1, 11), wcss)
+            ax.set_xlabel('Number of Clusters')#, size=20)
+            ax.set_ylabel('within cluster sum of squares (WSS)')#, size=5)
+            ax.set_title('Elbow Method')
+            ax.grid('on', alpha=0.3)
+            fig.tight_layout()
+            self.plot_dialog.show()
+        except:
+            QtWidgets.QMessageBox.information(self,'Info',
+                                              'Please, select X or Y values and click in K-Means button.',QtWidgets.QMessageBox.Ok)
+            traceback.print_exc(file=sys.stdout)
+            return
+            
         
+    def screen_table(self):
+        """Create new screen with table."""
+        try:
+            dialog_table = _tabledialog.TableDialog(table_df=self.DF)#.applymap(str))
+            dialog_table.exec_()
+
+        except Exception:
+            QtWidgets.QMessageBox.critical(
+                self, 'Failure', 'Failed to open table.', _QMessageBox.Ok)
+                   
 class main(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)

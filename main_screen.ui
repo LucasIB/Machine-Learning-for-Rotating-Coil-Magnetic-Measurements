@@ -130,6 +130,17 @@
               </widget>
              </item>
              <item>
+              <widget class="QPushButton" name="pb_cluster_hint">
+               <property name="text">
+                <string>Cluster Hint</string>
+               </property>
+               <property name="icon">
+                <iconset resource="resource_ml.qrc">
+                 <normaloff>:/images/resource/Magic-512.png</normaloff>:/images/resource/Magic-512.png</iconset>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QSpinBox" name="sb_cluster_number">
                <property name="value">
                 <number>3</number>
@@ -194,22 +205,6 @@
              </property>
             </widget>
            </item>
-           <item row="3" column="2">
-            <spacer name="verticalSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeType">
-              <enum>QSizePolicy::Preferred</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
            <item row="0" column="0">
             <spacer name="horizontalSpacer">
              <property name="orientation">
@@ -226,10 +221,35 @@
              </property>
             </spacer>
            </item>
+           <item row="3" column="2">
+            <spacer name="verticalSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Preferred</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
           </layout>
          </item>
          <item>
           <widget class="QPushButton" name="pb_viewtable">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string> View Table</string>
            </property>

@@ -1,0 +1,16 @@
+<RCC>
+  <qresource prefix="images">
+    <file>resource/Magic-512.png</file>
+    <file>resource/1351619288_DeleteRed.png</file>
+    <file>resource/1351621501_Check.png</file>
+    <file>resource/1351621507_Delete.png</file>
+    <file>resource/1351621535_Refresh.png</file>
+    <file>resource/Bar-Chart-icon.png</file>
+    <file>resource/clear.png</file>
+    <file>resource/cluster.png</file>
+    <file>resource/cluster2.png</file>
+    <file>resource/cropped-Brain-Tool-Icon-2.png</file>
+    <file>resource/file_add.png</file>
+    <file>resource/table.png</file>
+  </qresource>
+</RCC>
