@@ -1,5 +1,5 @@
 """Table dialog widget."""
-
+import traceback
 import os.path as _path
 import PyQt5.uic as _uic
 from PyQt5.QtCore import Qt as _Qt
@@ -38,41 +38,53 @@ class TableDialog(_QDialog):
         self.create_table()
 
     def create_table(self):
-        """Create table."""
-        if self.table_df is None:
-            return
+        try:
+            """Create table."""
+            if self.table_df is None:
+                return
 
-        df = self.table_df
+            df = self.table_df
 
-        _n_columns = len(df.columns)
-        _n_rows = len(df.index)
+            _n_columns = len(df.columns)
+            _n_rows = len(df.index)
 
-        if _n_columns != 0:
-            self.ui.tb_general.setColumnCount(_n_columns)
-            self.ui.tb_general.setHorizontalHeaderLabels(
-                df.columns)
+            if _n_columns != 0:
+                self.ui.tb_general.setColumnCount(_n_columns)
+                self.ui.tb_general.setHorizontalHeaderLabels(
+                    df.columns)
 
-        if _n_rows != 0:
-            self.ui.tb_general.setRowCount(_n_rows)
-            #self.ui.tb_general.setVerticalHeaderLabels(df.index)
+            if _n_rows != 0:
+                self.ui.tb_general.setRowCount(_n_rows)
+                lista0 = df.index.tolist()
+                lista = []
+                for i in range(len(lista0)):
+                    lista.append(str(lista0[i]))            
+                self.ui.tb_general.setVerticalHeaderLabels(lista)
 
-        for idx in range(_n_rows):
-            for _jdx in range(_n_columns):
-                if _jdx == 0:
-                    self.ui.tb_general.setItem(
-                     idx, _jdx,
-                     _QTableWidgetItem(
-                        '{0:1g}'.format(df.iloc[idx, _jdx])))
-                else:
-                    self.ui.tb_general.setItem(
-                        idx, _jdx,
-                        _QTableWidgetItem(
-                            (df.iloc[idx, _jdx])))
+            for idx in range(_n_rows):
+                for _jdx in range(_n_columns):
+                    if _jdx == 0:
+                        self.ui.tb_general.setItem(
+                         idx, _jdx,
+                         _QTableWidgetItem(
+                            '{0:1g}'.format(df.iloc[idx, _jdx])))
+                    if _jdx == 2:
+                        self.ui.tb_general.setItem(
+                            idx, _jdx,
+                            _QTableWidgetItem(
+                                (df.iloc[idx, _jdx])))
+                    else:
+                        self.ui.tb_general.setItem(
+                            idx, _jdx,
+                            _QTableWidgetItem(
+                                '{0:1g}'.format(df.iloc[idx, _jdx])))
 
-        _QApplication.processEvents()
+            _QApplication.processEvents()
 
-        self.ui.tb_general.resizeColumnsToContents()
-
+            self.ui.tb_general.resizeColumnsToContents()
+        except:
+            traceback.print_exc(file=sys.stdout)
+        
     def copy_to_clipboard(self):
         """Copy table to clipboard."""
         if self.table_df is not None:

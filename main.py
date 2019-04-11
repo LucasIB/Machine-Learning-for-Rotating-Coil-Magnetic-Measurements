@@ -54,6 +54,8 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.ui = Ui_Machine_Learn_Interface()
         self.ui.setupUi(self)
         self.plot_dialog = PlotDialog()
+        self.flag = False
+        self.lastClicked = []
         self.signals()
         
     def signals(self):
@@ -72,7 +74,6 @@ class ApplicationWindow(QtWidgets.QWidget):
             _archives = self.data_in.load_files()
             if _archives:
                 self.data_in.DataFile()
-#                 if len(self.data_in.files) != 0:
                 if self.data_in is not None:
                     if (self.ui.cb_x_values.count() == 0) and (self.ui.cb_y_values.count() == 0): 
                         self.combo_box_x_value()
@@ -80,14 +81,16 @@ class ApplicationWindow(QtWidgets.QWidget):
                     self.get_offsets()
                     self.get_roll()
                     self.ui.pb_kmeans.setEnabled(True)
-                    QtWidgets.QMessageBox.information(self,'Info','Files successfully updated',QtWidgets.QMessageBox.Ok)
+                    QtWidgets.QMessageBox.information(self,
+                                                      'Info','Files successfully updated',QtWidgets.QMessageBox.Ok)
                 else:
                     return
                 QtWidgets.QApplication.processEvents()
             else:
                 raise
         except:
-            QtWidgets.QMessageBox.critical(self,'Critical','Files do not loaded.',QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox.critical(self,
+                                           'Critical','Files do not loaded.',QtWidgets.QMessageBox.Ok)
             return
         
     def get_offsets(self):
@@ -149,9 +152,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.DF = {'x': var_x,
                    'y': var_y}
         self.DF = pd.DataFrame(self.DF, columns=['x', 'y'])
-        print(self.DF)
-#         print(self.ui.cb_x_values.currentIndex())
-#         print(self.ui.cb_y_values.currentIndex())       
+#         print(self.DF)
     
     def k_means(self):
         try:
@@ -178,7 +179,7 @@ class ApplicationWindow(QtWidgets.QWidget):
                     _prev = np.append(_prev, _predicts[j])
                 self.DF['magnet'] = pd.Series(_names, index=self.DF.index)
                 self.DF['class'] = pd.Series(_prev, index=self.DF.index)
-                print(self.DF.head())
+#                 print(self.DF.head())
             
             self.ui.pb_viewtable.setEnabled(True)
             self.plot_view(self.DF, _centroids)
@@ -220,7 +221,11 @@ class ApplicationWindow(QtWidgets.QWidget):
             #Clear screen
             self.ui.graphicsView.clear()
             
-            #Creating the legend
+            #Closing previous legend
+            if self.flag:
+                self.ui.graphicsView.plotItem.legend.close()
+            
+            #Creating the new legend
             self.ui.graphicsView.plotItem.addLegend()
             
             _vars = self.filter_class(df)
@@ -228,22 +233,22 @@ class ApplicationWindow(QtWidgets.QWidget):
             _s1 = pg.ScatterPlotItem(_vars[0],
                                      _vars[1],
                                      size=10,
-                                     pen=pg.mkPen(None),
-                                     brush='r',
+                                     pen=pg.mkPen({'color': "F4425F", 'width': 1}), #Red
+                                     brush=pg.mkBrush(244, 115, 136, 120),
                                      name='class 0') # Class = 0
             
             _s2 = pg.ScatterPlotItem(_vars[2],
                                      _vars[3],
                                      size=10,
-                                     pen=pg.mkPen(None),
-                                     brush='b',
+                                     pen=pg.mkPen({'color': "1003BC", 'width': 1}), #Blue
+                                     brush=pg.mkBrush(49, 104, 224, 120),
                                      name='class 1') # Class = 1
             
             _s3 = pg.ScatterPlotItem(_vars[4],
                                      _vars[5],
                                      size=10,
-                                     pen=pg.mkPen(None),
-                                     brush='k',
+                                     pen=pg.mkPen({'color': "DD9D1C", 'width': 1}), #Yellow
+                                     brush=pg.mkBrush(237, 192, 101, 120),
                                      name='class 2') # Class = 2
             #Adding centers points
             _s4 = pg.ScatterPlotItem(center[:, 0],
@@ -260,6 +265,14 @@ class ApplicationWindow(QtWidgets.QWidget):
             self.ui.graphicsView.addItem(_s2)
             self.ui.graphicsView.addItem(_s3)
             self.ui.graphicsView.addItem(_s4)
+            self.ui.graphicsView.plotItem.legend.addItem(_s1, ' class 0')
+            self.ui.graphicsView.plotItem.legend.addItem(_s2, ' class 1')
+            self.ui.graphicsView.plotItem.legend.addItem(_s3, ' class 2')
+            self.ui.graphicsView.plotItem.legend.addItem(_s4, ' centroids')
+            _s1.sigClicked.connect(self.clicked)
+            _s2.sigClicked.connect(self.clicked)
+            _s3.sigClicked.connect(self.clicked)
+            self.flag = True
             QtWidgets.QApplication.processEvents()
         except:
             traceback.print_exc(file=sys.stdout)
@@ -279,14 +292,13 @@ class ApplicationWindow(QtWidgets.QWidget):
                     kmeans.fit(_DF_for_hint)
                 else:
                     kmeans.fit(self.DF)
-                #print (i,kmeans.inertia_)
                 wcss.append(kmeans.inertia_)  
             fig = self.plot_dialog.figure
             ax = self.plot_dialog.ax
             ax.clear()
             ax.plot(np.arange(1, 11), wcss)
-            ax.set_xlabel('Number of Clusters')#, size=20)
-            ax.set_ylabel('within cluster sum of squares (WSS)')#, size=5)
+            ax.set_xlabel('Number of Clusters')
+            ax.set_ylabel('within cluster sum of squares (WSS)')
             ax.set_title('Elbow Method')
             ax.grid('on', alpha=0.3)
             fig.tight_layout()
@@ -296,8 +308,7 @@ class ApplicationWindow(QtWidgets.QWidget):
                                               'Please, select X or Y values and click in K-Means button.',QtWidgets.QMessageBox.Ok)
             traceback.print_exc(file=sys.stdout)
             return
-            
-        
+               
     def screen_table(self):
         """Create new screen with table."""
         try:
@@ -307,6 +318,21 @@ class ApplicationWindow(QtWidgets.QWidget):
         except Exception:
             QtWidgets.QMessageBox.critical(
                 self, 'Failure', 'Failed to open table.', _QMessageBox.Ok)
+            
+
+    def clicked(self, plot, points):
+        """Make all plots clickable"""
+        try:
+            #global lastClicked
+            for p in self.lastClicked:
+                p.resetPen()
+            print("clicked points: ", points[0].pos())
+            for p in points:
+                p.setPen('b', width=2)
+            self.lastClicked = points
+        except:
+            traceback.print_exc(file=sys.stdout)
+            return            
                    
 class main(threading.Thread):
     def __init__(self):

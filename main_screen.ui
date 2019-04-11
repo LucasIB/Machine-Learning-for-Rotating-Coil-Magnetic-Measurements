@@ -138,6 +138,12 @@
                 <iconset resource="resource_ml.qrc">
                  <normaloff>:/images/resource/Magic-512.png</normaloff>:/images/resource/Magic-512.png</iconset>
                </property>
+               <property name="iconSize">
+                <size>
+                 <width>18</width>
+                 <height>18</height>
+                </size>
+               </property>
               </widget>
              </item>
              <item>

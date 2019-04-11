@@ -82,6 +82,7 @@ class Ui_Machine_Learn_Interface(object):
         icon3 = QtGui.QIcon()
         icon3.addPixmap(QtGui.QPixmap(":/images/resource/Magic-512.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.pb_cluster_hint.setIcon(icon3)
+        self.pb_cluster_hint.setIconSize(QtCore.QSize(18, 18))
         self.pb_cluster_hint.setObjectName("pb_cluster_hint")
         self.horizontalLayout.addWidget(self.pb_cluster_hint)
         self.sb_cluster_number = QtWidgets.QSpinBox(self.Tab)

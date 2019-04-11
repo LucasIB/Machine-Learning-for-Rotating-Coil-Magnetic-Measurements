@@ -24,7 +24,7 @@
    <item row="0" column="0">
     <widget class="QPushButton" name="bt_copy_to_clipboard">
      <property name="text">
-      <string>Copiar para área de transferência</string>
+      <string>Copy to clipboard</string>
      </property>
     </widget>
    </item>
