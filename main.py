@@ -19,6 +19,7 @@ from PyQt5.QtWidgets import QMessageBox as QMessageBox
 
 #Interface
 from main_screen import *
+from numpy.f2py.auxfuncs import isarray, isinteger
 
 class PlotDialog(QtWidgets.QDialog):
     """Matplotlib plot dialog."""
@@ -50,20 +51,23 @@ class ApplicationWindow(QtWidgets.QWidget):
     """Machine Learning for Magnetic Measurement user interface"""
     def __init__(self, parent=None):
         super(ApplicationWindow, self).__init__(parent)
-        
+
         self.ui = Ui_Machine_Learn_Interface()
         self.ui.setupUi(self)
         self.plot_dialog = PlotDialog()
         self.flag = False
         self.lastClicked = []
+        self.dictionary()
         self.signals()
         
     def signals(self):
         """Connects UI signals and functions."""
-        self.ui.pb_openfiles.clicked.connect(self.master_data) 
+        self.ui.pb_openfiles.clicked.connect(self.master_data)
         self.ui.pb_kmeans.clicked.connect(self.k_means)
         self.ui.cb_x_values.currentIndexChanged.connect(self.change_x_graphs_values)
+        self.ui.cb_x_n_order.currentIndexChanged.connect(self.change_x_graphs_values)
         self.ui.cb_y_values.currentIndexChanged.connect(self.change_y_graphs_values)
+        self.ui.cb_y_n_order.currentIndexChanged.connect(self.change_y_graphs_values)
         self.ui.pb_viewtable.clicked.connect(self.screen_table)
         self.ui.pb_cluster_hint.clicked.connect(self.cluster_hint)
         
@@ -81,6 +85,7 @@ class ApplicationWindow(QtWidgets.QWidget):
                     self.get_offsets()
                     self.get_roll()
                     self.ui.pb_kmeans.setEnabled(True)
+                    self.magnet_name()
                     QtWidgets.QMessageBox.information(self,
                                                       'Info','Files successfully updated',QtWidgets.QMessageBox.Ok)
                 else:
@@ -102,14 +107,33 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.data_in._set_roll()        
 
     def combo_box_x_value(self):
+        """Fill the X values combo box after load data"""
         self.ui.cb_x_values.addItems(
             [s.replace("(T/m^n-2)", "").strip() for s in self.data_in.Data[0].columns_names])
         self.ui.cb_x_values.addItems(["main currents", "X offset", "roll angle"])
     
     def combo_box_y_value(self):
+        """Fill the Y values combo box after load data"""
         self.ui.cb_y_values.addItems(
             [s.replace("(T/m^n-2)", "").strip() for s in self.data_in.Data[0].columns_names])
         self.ui.cb_y_values.addItems(["main currents", "Y offset", "roll angle"])
+            
+    def dictionary(self):
+        self._dict = {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+                      '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+                      '11': 11, '12': 12}
+        
+    def change_x_n_order(self, i, idx_label):
+        _x_order = self.ui.cb_x_n_order.currentIndex()
+        self.var_x = np.append(self.var_x,
+                               self.data_in.Data[i].multipoles[_x_order][idx_label])
+#         print('harmonic X: ', _x_order)
+       
+    def change_y_n_order(self, i, idx_label):        
+        _y_order = self.ui.cb_y_n_order.currentIndex()
+        self.var_y = np.append(self.var_y,
+                               self.data_in.Data[i].multipoles[_y_order][idx_label])
+#         print('harmonic Y: ', _y_order)
     
     def change_x_graphs_values(self):
         try:
@@ -117,14 +141,22 @@ class ApplicationWindow(QtWidgets.QWidget):
             idx_label = self.ui.cb_x_values.currentIndex()
             for i in range(len(self.data_in.files)):
                 if idx_label == 13:
+                    self.ui.cb_x_n_order.setEnabled(False)
                     self.var_x = np.append(self.var_x, self.data_in.Data[i].main_current)
                 elif idx_label == 14:
+                    self.ui.cb_x_n_order.setEnabled(False)
                     self.var_x = np.append(self.var_x, self.data_in.Data[i].offset_x)
+                elif idx_label == 15:
+                    self.ui.cb_x_n_order.setEnabled(False)
+                    self.var_x = np.append(self.var_x, self.data_in.Data[i].roll)
                 elif idx_label == 0:
+                    self.ui.cb_x_n_order.setEnabled(False)
                     pass
-                else:
-                    self.var_x = np.append(self.var_x,
-                                           self.data_in.Data[i].multipoles[self.data_in.Data[i].magnet_type][idx_label])                
+                elif str(idx_label) in self._dict:
+                    self.ui.cb_x_n_order.setEnabled(True)
+                    self.change_x_n_order(i, idx_label)
+#             print(self.var_x)
+                
         except:
             traceback.print_exc(file=sys.stdout)            
         
@@ -136,27 +168,32 @@ class ApplicationWindow(QtWidgets.QWidget):
                 if idx_label == 0:
                     pass
                 elif idx_label == 13:
-                    self.var_x = np.append(self.var_x, self.data_in.Data[i].main_current)
+                    self.ui.cb_y_n_order.setEnabled(False)
+                    self.var_y = np.append(self.var_y, self.data_in.Data[i].main_current)
                 elif idx_label == 14:
+                    self.ui.cb_y_n_order.setEnabled(False)
                     self.var_y = np.append(self.var_y, self.data_in.Data[i].offset_y)
-                else:
-                    self.var_y = np.append(self.var_y,
-                                           self.data_in.Data[i].multipoles[self.data_in.Data[i].magnet_type][idx_label])             
-            
-            if (len(self.var_x)) and (len(self.var_y)) > 0:
-                self.data_frame_manager(self.var_x, self.var_y)
+                elif idx_label == 15:
+                    self.ui.cb_y_n_order.setEnabled(False)
+                    self.var_y = np.append(self.var_y, self.data_in.Data[i].roll)
+                elif str(idx_label) in self._dict:
+                    self.ui.cb_y_n_order.setEnabled(True)
+                    self.change_y_n_order(i, idx_label)                   
+#             print(self.var_y)
         except:
             traceback.print_exc(file=sys.stdout)
             
-    def data_frame_manager(self, var_x, var_y):
-        self.DF = {'x': var_x,
-                   'y': var_y}
-        self.DF = pd.DataFrame(self.DF, columns=['x', 'y'])
-#         print(self.DF)
+    def data_frame_manager(self):      
+        if (len(self.var_x)) and (len(self.var_y)) > 0:
+            self.DF = {'x': self.var_x,
+                       'y': self.var_y}
+            self.DF = pd.DataFrame(self.DF, columns=['x', 'y'])
     
     def k_means(self):
+        """Method for clustering data with k-means"""
         try:
-            """Method for clustering data with k-means"""
+            self.data_frame_manager()
+                        
             _n_cluster = self.ui.sb_cluster_number.value()
             
             if len(self.DF.columns) > 2:
@@ -281,6 +318,10 @@ class ApplicationWindow(QtWidgets.QWidget):
         """Count the number of elements in each cluster"""
         pass
     
+    def magnet_name(self):
+        _magnet = self.data_in.Data[0].magnet_name[:3]
+        return self.ui.lb_magnt_name.setText(_magnet)
+    
     def cluster_hint(self):
         """Ideal determination of number of clusters (elbow method)"""
         try:                
@@ -298,7 +339,7 @@ class ApplicationWindow(QtWidgets.QWidget):
             ax.clear()
             ax.plot(np.arange(1, 11), wcss)
             ax.set_xlabel('Number of Clusters')
-            ax.set_ylabel('within cluster sum of squares (WSS)')
+            ax.set_ylabel('Within cluster sum of squares (WSS)')
             ax.set_title('Elbow Method')
             ax.grid('on', alpha=0.3)
             fig.tight_layout()
@@ -306,20 +347,18 @@ class ApplicationWindow(QtWidgets.QWidget):
         except:
             QtWidgets.QMessageBox.information(self,'Info',
                                               'Please, select X or Y values and click in K-Means button.',QtWidgets.QMessageBox.Ok)
-            traceback.print_exc(file=sys.stdout)
             return
                
     def screen_table(self):
         """Create new screen with table."""
         try:
-            dialog_table = _tabledialog.TableDialog(table_df=self.DF)#.applymap(str))
+            dialog_table = _tabledialog.TableDialog(table_df=self.DF)
             dialog_table.exec_()
 
         except Exception:
             QtWidgets.QMessageBox.critical(
                 self, 'Failure', 'Failed to open table.', _QMessageBox.Ok)
             
-
     def clicked(self, plot, points):
         """Make all plots clickable"""
         try:

@@ -1,4 +1,5 @@
 """Table dialog widget."""
+import numpy as np
 import traceback
 import os.path as _path
 import PyQt5.uic as _uic
@@ -55,15 +56,12 @@ class TableDialog(_QDialog):
 
             if _n_rows != 0:
                 self.ui.tb_general.setRowCount(_n_rows)
-                lista0 = df.index.tolist()
-                lista = []
-                for i in range(len(lista0)):
-                    lista.append(str(lista0[i]))            
-                self.ui.tb_general.setVerticalHeaderLabels(lista)
-
+                lista0 = np.asarray(df.index.tolist(), dtype='<U32')            
+                self.ui.tb_general.setVerticalHeaderLabels(lista0)
+                
             for idx in range(_n_rows):
                 for _jdx in range(_n_columns):
-                    if _jdx == 0:
+                    if (_jdx == 0) | (_jdx == 1) | (_jdx == 3):
                         self.ui.tb_general.setItem(
                          idx, _jdx,
                          _QTableWidgetItem(
@@ -73,11 +71,6 @@ class TableDialog(_QDialog):
                             idx, _jdx,
                             _QTableWidgetItem(
                                 (df.iloc[idx, _jdx])))
-                    else:
-                        self.ui.tb_general.setItem(
-                            idx, _jdx,
-                            _QTableWidgetItem(
-                                '{0:1g}'.format(df.iloc[idx, _jdx])))
 
             _QApplication.processEvents()
 
